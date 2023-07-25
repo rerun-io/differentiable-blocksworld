@@ -41,6 +41,6 @@ training:
   val_stat_interval: 100
   seed: 227391
   visualizer: 
-    name: visdom
-    port: 
+    name: rerun
+    rrd_filename:
   resume:

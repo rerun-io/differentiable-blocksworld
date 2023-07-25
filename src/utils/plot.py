@@ -2,6 +2,7 @@ from copy import deepcopy
 from contextlib import contextmanager
 from matplotlib import pyplot as plt
 from matplotlib import colors as mplcolors
+from typing import Optional
 import PIL
 import os
 
@@ -22,10 +23,13 @@ VIZ_POINTS = 5000
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 
 class RerunVisualizer:
-    def __init__(self, visualizer_port, run_dir):
+    def __init__(self, rrd_filename: Optional[str], run_dir: str):
         import rerun as rr
 
-        # TODO setup rerun visualizer
+        rr.init("Differential Block World", spawn=rrd_filename is None)
+
+        if rrd_filename is not None:
+            rr.save(os.path.join(run_dir, rrd_filename))
 
     def upload_images(self, images, title, ncol=None, max_size=VIZ_MAX_IMG_SIZE):
         # TODO log images to rerun
