@@ -1,9 +1,9 @@
 import argparse
 from pathlib import Path
 import time
-from toolz import merge, keyfilter, valmap
 import warnings
 
+from toolz import merge, keyfilter, valmap
 import numpy as np
 from pytorch3d.structures import Meshes
 import torch
@@ -114,7 +114,9 @@ class Trainer:
             for batch, (images, labels) in enumerate(self.train_loader, start=1):
                 if batch < batch_start:
                     continue
+
                 self.run_single_batch_train(images, labels)
+
                 if cur_iter % self.train_stat_interval == 0:
                     self.log_train_metrics(cur_iter, epoch, batch)
 
@@ -156,7 +158,7 @@ class Trainer:
         print_log(LOG_FMT(epoch, self.n_epoches, batch, self.n_batches, f'val_metrics: {metrics}')[:1000])
         cmap = get_fancy_cmap()
         colors = (cmap(np.linspace(0, 1, len(named_values) + 1)[1:]) * 255).astype(np.uint8)
-        self.visualizer.upload_lineplot(it, metrics.get_named_values(), title='opacities', colors=colors)
+        self.visualizer.log_scalars(it, metrics.get_named_values(), title='opacities', colors=colors)
         metrics.log_and_reset(it=it, epoch=epoch, batch=batch)
 
     def step(self, epoch, batch):
@@ -170,7 +172,7 @@ class Trainer:
     def log_train_metrics(self, it, epoch, batch):
         metrics = self.train_metrics
         print_log(LOG_FMT(epoch, self.n_epoches, batch, self.n_batches, f'train_metrics: {metrics}')[:1000])
-        self.visualizer.upload_lineplot(it, metrics.get_named_values(lambda s: 'loss' in s), title='train_losses')
+        self.visualizer.log_scalars(it, metrics.get_named_values(lambda s: 'loss' in s), title='train_losses')
         metrics.log_and_reset(it=it, epoch=epoch, batch=batch)
 
     @torch.no_grad()

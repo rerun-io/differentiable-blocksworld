@@ -11,9 +11,9 @@ import pandas as pd
 import torch
 from torch.nn import functional as F
 import seaborn as sns
+import rerun as rr
 
 from .logger import print_log
-
 
 VIZ_HEIGHT = 300
 VIZ_WIDTH = 500
@@ -23,8 +23,7 @@ VIZ_POINTS = 5000
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 
 class RerunVisualizer:
-    def __init__(self, rrd_filename: Optional[str], run_dir: str):
-        import rerun as rr
+    def __init__(self, rrd_filename: Optional[str], run_dir: str) -> None:
 
         rr.init("Differential Block World", spawn=rrd_filename is None)
 
@@ -35,9 +34,10 @@ class RerunVisualizer:
         # TODO log images to rerun
         pass
 
-    def upload_lineplot(self, cur_iter, named_values, title, colors=None):
-        # TODO log lineplot to rerun
-        pass
+    def log_scalars(self, cur_iter, named_values, title, *_, **__):
+        rr.set_time_sequence("iteration", cur_iter)
+        for name, value in named_values:
+            rr.log_scalar(title + "/" + name, value)
 
     def upload_barplot(self, named_values, title):
         # TODO log barplot to rerun
@@ -70,10 +70,10 @@ class VisdomVisualizer:
         self.visualizer.images(images.clamp(0, 1), win=title, nrow=ncol, opts={'title': title,
                                'store_history': True, 'width': VIZ_WIDTH, 'height': VIZ_HEIGHT})
 
-    def upload_lineplot(self, cur_iter, named_values, title, colors=None):
+    def log_scalars(self, cur_iter, named_scalars, title, colors=None):
         if self.visualizer is None:
             return None
-        names, values = map(list, zip(*named_values))
+        names, values = map(list, zip(*named_scalars))
         y, x = [values], [[cur_iter] * len(values)]
         self.visualizer.line(y, x, win=title, update='append', opts={'title': title, 'linecolor': colors,
                              'legend': names, 'width': VIZ_WIDTH, 'height': VIZ_HEIGHT})
