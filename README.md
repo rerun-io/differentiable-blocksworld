@@ -52,7 +52,21 @@ This repository contains:
 
 ## Installation :construction_worker:
 
-### 1. Create conda environment :wrench:
+### 1. Setup environment :wrench:
+
+#### Custom environment (venv / pyenv / direnv / etc.)
+
+Starting from an empty Python environment (e.g., `python3 -m venv dbw`) with CUDA 11.7 or 11.8 available (check that `nvcc --version` is working), install torch for your CUDA version (see [PyTorch website](https://pytorch.org/get-started/locally/) for more details). 
+
+Subsequently install all other requirements using 
+```
+pip install -r requirements.txt
+```
+Note that this will install pytorch3d from source, which requires torch to be installed first, hence the torch installation step above.
+
+TODO make sure this works as expected
+
+#### Conda
 
 ```
 conda env create -f environment.yml

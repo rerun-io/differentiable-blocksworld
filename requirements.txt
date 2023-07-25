@@ -73,7 +73,7 @@ pyparsing==3.0.9
 pyquaternion==0.9.9
 PySocks==1.7.1
 python-dateutil==2.8.2
-pytorch3d==0.7.4
+pytorch3d @ git+https://github.com/facebookresearch/pytorch3d.git@v0.7.4
 pytz==2023.3
 PyYAML==6.0.1
 pyzmq==25.1.0
@@ -94,9 +94,6 @@ tenacity==8.2.2
 termcolor==2.3.0
 threadpoolctl==3.2.0
 toolz==0.12.0
-torch==2.0.1+cu118
-torchaudio==2.0.2+cu118
-torchvision==0.15.2+cu118
 tornado==6.3.2
 tqdm==4.65.0
 traitlets==5.9.0
