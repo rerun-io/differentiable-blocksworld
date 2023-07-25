@@ -1,3 +1,4 @@
+from copy import deepcopy
 from contextlib import contextmanager
 from matplotlib import pyplot as plt
 from matplotlib import colors as mplcolors
@@ -18,15 +19,39 @@ VIZ_WIDTH = 500
 VIZ_MAX_IMG_SIZE = 128
 VIZ_POINTS = 5000
 
+# TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 
-class Visualizer:
-    def __init__(self, viz_port, run_dir):
-        if viz_port is not None:
+class RerunVisualizer:
+    def __init__(self, visualizer_port, run_dir):
+        import rerun as rr
+
+        # TODO setup rerun visualizer
+
+    def upload_images(self, images, title, ncol=None, max_size=VIZ_MAX_IMG_SIZE):
+        # TODO log images to rerun
+        pass
+
+    def upload_lineplot(self, cur_iter, named_values, title, colors=None):
+        # TODO log lineplot to rerun
+        pass
+
+    def upload_barplot(self, named_values, title):
+        # TODO log barplot to rerun
+        pass
+
+    def upload_pointcloud(self, points, colors=None, title=None):
+        # TODO log pointcloud to rerun
+        pass
+
+
+class VisdomVisualizer:
+    def __init__(self, port, run_dir):
+        if port is not None:
             import visdom
             os.environ["http_proxy"] = ""  # XXX set to solve proxy issues
-            visualizer = visdom.Visdom(port=viz_port, env=f'{run_dir.parent.name}_{run_dir.name}')
+            visualizer = visdom.Visdom(port=port, env=f'{run_dir.parent.name}_{run_dir.name}')
             visualizer.delete_env(visualizer.env)  # Clean env before plotting
-            print_log(f"Visualizer initialised at {viz_port}")
+            print_log(f"Visualizer initialised at {port}")
         else:
             visualizer = None
             print_log("No visualizer initialized")
@@ -166,3 +191,19 @@ def plot_img_grid(images, nrow=None, ncol=None, scale=4, wspace=0.05, hspace=0.0
         else:
             ax.imshow(img)
         ax.set_axis_off()
+
+
+def create_visualizer(cfg, run_dir):
+    kwargs = deepcopy(cfg['training']['visualizer'] or {})
+    name = kwargs.pop('name')
+    visualizer = get_visualizer(name)(**kwargs, run_dir=run_dir)
+    print_log(f'Visualizer "{name}" init: kwargs={cfg["training"]["visualizer"]}')
+    return visualizer
+
+def get_visualizer(name):
+    if name is None:
+        name = "rerun"
+    return {
+        "visdom": VisdomVisualizer,
+        "rerun": RerunVisualizer,
+    }[name]

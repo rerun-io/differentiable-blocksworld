@@ -19,7 +19,7 @@ from utils.image import ImageLogger
 from utils.logger import create_logger, print_log, print_warning
 from utils.metrics import Metrics
 from utils.path import CONFIGS_PATH, RUNS_PATH, DATASETS_PATH
-from utils.plot import plot_lines, Visualizer, get_fancy_cmap
+from utils.plot import plot_lines, VisdomVisualizer, get_fancy_cmap, create_visualizer
 from utils.pytorch import get_torch_device, torch_to
 
 
@@ -68,10 +68,9 @@ class Trainer:
         self.rec3_logger = ImageLogger(self.run_dir / 'reconstructions_syn', self.viz_samples, out_ext='png')
         self.txt_logger = ImageLogger(self.run_dir / 'txt_blocks', out_ext=out_ext)
         if self.with_training:
-            viz_port = cfg['training'].get('visualizer_port')
-            self.visualizer = Visualizer(viz_port, self.run_dir)
-        else:  # no visualizer if eval only
-            self.visualizer = Visualizer(None, self.run_dir)
+            self.visualizer = create_visualizer(cfg, self.run_dir)
+        else:  # no visualizer (VisdomVisualizer without port does nothing) if eval only
+            self.visualizer = VisdomVisualizer(None, self.run_dir)
 
     @property
     def with_training(self):
