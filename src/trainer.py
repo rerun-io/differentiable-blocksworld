@@ -108,12 +108,15 @@ class Trainer:
     @use_seed()
     def run(self):
         cur_iter = (self.epoch_start - 1) * self.n_batches + self.batch_start
+        self.log_dataset_visualization(cur_iter)
         self.log_visualizations(cur_iter)
         for epoch in range(self.epoch_start, self.n_epoches + 1):
             batch_start = self.batch_start if epoch == self.epoch_start else 1
             for batch, (images, labels) in enumerate(self.train_loader, start=1):
                 if batch < batch_start:
                     continue
+
+                breakpoint()
 
                 self.run_single_batch_train(images, labels)
 
@@ -198,6 +201,10 @@ class Trainer:
         txt = self.model.get_arranged_block_txt()
         self.txt_logger.save(txt, cur_iter)
         self.visualizer.upload_images(txt, 'textures', 1, max_size=256)
+
+    @torch.no_grad()
+    def log_dataset_visualization(self, cur_iter):
+        self.visualizer.log_dataset(cur_iter, self.dataset)
 
     def save(self, epoch, batch, checkpoint=False):
         state = {

@@ -34,6 +34,36 @@ class RerunVisualizer:
         # TODO log images to rerun
         pass
 
+    def log_dataset(self, cur_iter, dataset):
+        rr.set_time_sequence("iteration", cur_iter)
+        for image_id, (image_dict, label) in enumerate(dataset):
+            rr.log_image(
+                f"world/train_images/#{image_id}", image_dict["imgs"].permute(1, 2, 0)
+            )
+            _, height, width = image_dict["imgs"].shape
+            scale = min(height, width) / 2.0
+            fx = image_dict["K"][0, 0] * scale
+            fy = image_dict["K"][1, 1] * scale
+            cx = -image_dict["K"][0, 2] * scale + width / 2.0
+            cy = -image_dict["K"][1, 2] * scale + height / 2.0
+            translation = image_dict["T"].clone()
+            rotation = image_dict["R"].clone()
+            # row vector convention (pytorch3d) -> column vector convention (rerun)
+            rotation = rotation.T
+            rr.log_pinhole(
+                f"world/train_images/#{image_id}",
+                width=width,
+                height=height,
+                focal_length_px=(fx, fy),
+                principal_point_px=(cx, cy),
+                camera_xyz="LUF",  # see https://pytorch3d.org/docs/cameras
+            )
+            rr.log_transform3d(
+                f"world/train_images/#{image_id}",
+                rr.TranslationAndMat3(translation=translation, matrix=rotation),
+                from_parent=True,  # pytorch3d uses camera from world
+            )
+
     def log_scalars(self, cur_iter, named_values, title, *_, **__):
         rr.set_time_sequence("iteration", cur_iter)
         for name, value in named_values:
