@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 import PIL
 import rerun as rr
-import trimesh
 import seaborn as sns
 import torch
+import trimesh
 from matplotlib import colors as mplcolors
 from matplotlib import pyplot as plt
 from torch.nn import functional as F
@@ -40,6 +40,9 @@ class RerunVisualizer:
 
         rr.init("Differential Block World", spawn=rrd_filename is None)
 
+        rr.log_view_coordinates("world", up="+Y", timeless=True)
+        # rr.log_transform3d("world", spawn=rrd_filename is None)
+
         if rrd_filename is not None:
             rr.save(os.path.join(run_dir, rrd_filename))
 
@@ -54,7 +57,7 @@ class RerunVisualizer:
         for i, render in enumerate(renders[: self.max_renders]):
             rr.log_image(f"{title}/#{i}", render.permute(1, 2, 0))
 
-    def log_p3d_mesh(self, entity_path, p3d_mesh):
+    def log_p3d_mesh(self, entity_path, p3d_mesh, invert_normals = False):
         file_name = entity_path.replace("/", "-") + ".glb"
         glb_path = os.path.join(self.glb_files_dir, file_name)
 
@@ -64,7 +67,9 @@ class RerunVisualizer:
         uv_faces = p3d_mesh.textures.faces_uvs_padded()[0]
 
         # find 3D vertex for each uv vertex
-        uv_vertex_2_mesh_vertex = torch.zeros(len(uv_verts), dtype=torch.long, device=uv_verts.device)
+        uv_vertex_2_mesh_vertex = torch.zeros(
+            len(uv_verts), dtype=torch.long, device=uv_verts.device
+        )
         uv_vertex_2_mesh_vertex[uv_faces.flatten()] = mesh_faces.flatten()
         mesh_verts = raw_mesh_verts[uv_vertex_2_mesh_vertex]
 
@@ -81,25 +86,36 @@ class RerunVisualizer:
                 np.uint8(p3d_mesh.textures.maps_padded()[0].numpy(force=True) * 255)
             ),
         )
-        tm_mesh.vertex_normals  # this computes vertex normals
+        tm_mesh.vertex_normals
+        if invert_normals:
+            tm_mesh.vertex_normals = -1 * tm_mesh.vertex_normals
+
         tm_mesh.export(glb_path)
         rr.log_mesh_file(entity_path, rr.MeshFormat.GLB, mesh_path=glb_path)
 
     def log_model(self, cur_iter, model):
         """Log current meshes."""
+        # R_up_fix = np.array(
+        #     [[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
+        # )  # changes -y to y axis
+        rr.log_transform3d(
+            "world/dbw",
+            rr.TranslationAndMat3(matrix=model.R_world[0].numpy(force=True)),
+            timeless=True,
+        )
         rr.set_time_sequence("iteration", cur_iter)
         os.makedirs(self.glb_files_dir, exist_ok=True)
         blocks = model.build_blocks(
             world_coord=True, filter_transparent=False, as_scene=False
         )
         for i, block in enumerate(blocks):
-            self.log_p3d_mesh(f"world/blocks/#{i}", block)
+            self.log_p3d_mesh(f"world/dbw/blocks/#{i}", block)
 
         ground = model.build_ground(world_coord=True)
-        self.log_p3d_mesh("world/ground", ground)
+        self.log_p3d_mesh("world/dbw/ground", ground)
 
         background = model.build_bkg(world_coord=True)
-        self.log_p3d_mesh("world/background", background)
+        self.log_p3d_mesh("world/dbw/background", background, invert_normals=True)
 
         # TODO separately log with thresholded opacity
 
@@ -117,7 +133,7 @@ class RerunVisualizer:
             # row vector convention (pytorch3d) -> column vector convention (rerun)
             rotation = rotation.T
             rr.log_pinhole(
-                f"world/train_images/#{image_id}",
+                f"world/dbw/train_images/#{image_id}",
                 width=width,
                 height=height,
                 focal_length_px=(fx, fy),
@@ -125,12 +141,13 @@ class RerunVisualizer:
                 camera_xyz="LUF",  # see https://pytorch3d.org/docs/cameras
             )
             rr.log_transform3d(
-                f"world/train_images/#{image_id}",
+                f"world/dbw/train_images/#{image_id}",
                 rr.TranslationAndMat3(translation=translation, matrix=rotation),
                 from_parent=True,  # pytorch3d uses camera from world
             )
             rr.log_image(
-                f"world/train_images/#{image_id}", image_dict["imgs"].permute(1, 2, 0)
+                f"world/dbw/train_images/#{image_id}",
+                image_dict["imgs"].permute(1, 2, 0),
             )
 
     def log_scalars(self, cur_iter, named_values, title, *_, **__):
