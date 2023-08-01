@@ -24,9 +24,7 @@ VIZ_POINTS = 5000
 
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 # TODO similar log_textures / log_renders split for VisdomVisualizer
-# TODO normal of ground plane
-# TODO fix uv textures
-# TODO set up axis as ground plane normal
+
 # TODO thresholded logging
 # TODO synthetic color logging
 # TODO log time scale logging
