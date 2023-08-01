@@ -1,17 +1,16 @@
+import gc
 import os
 from contextlib import contextmanager
 from copy import deepcopy
 from typing import Optional
 
-import gc
 import numpy as np
 import pandas as pd
 import PIL
-import pytorch3d.io
 import rerun as rr
+import trimesh
 import seaborn as sns
 import torch
-import trimesh
 from matplotlib import colors as mplcolors
 from matplotlib import pyplot as plt
 from torch.nn import functional as F
@@ -24,32 +23,60 @@ VIZ_MAX_IMG_SIZE = 128
 VIZ_POINTS = 5000
 
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
+# TODO similar log_textures / log_renders split for VisdomVisualizer
+# TODO normal of ground plane
+# TODO fix uv textures
+# TODO set up axis as ground plane normal
+# TODO thresholded logging
+# TODO synthetic color logging
+# TODO log time scale logging
 
 
 class RerunVisualizer:
     def __init__(self, rrd_filename: Optional[str], run_dir: str) -> None:
         self.run_dir = run_dir
         self.glb_files_dir = os.path.join(self.run_dir, "glb_files")
+        self.max_renders = 1
 
         rr.init("Differential Block World", spawn=rrd_filename is None)
 
         if rrd_filename is not None:
             rr.save(os.path.join(run_dir, rrd_filename))
 
-    def upload_images(self, images, title, ncol=None, max_size=VIZ_MAX_IMG_SIZE):
-        # TODO log images to rerun
-        pass
+    def log_textures(self, cur_iter, textures, title, *_, **__):
+        rr.set_time_sequence("iteration", cur_iter)
+        rr.log_image(f"{title}", textures.permute(1, 2, 0))
+
+    def log_renders(
+        self, cur_iter, renders, title, gts=None, max_size=VIZ_MAX_IMG_SIZE, *_, **__
+    ):
+        rr.set_time_sequence("iteration", cur_iter)
+        for i, render in enumerate(renders[: self.max_renders]):
+            rr.log_image(f"{title}/#{i}", render.permute(1, 2, 0))
 
     def log_p3d_mesh(self, entity_path, p3d_mesh):
         file_name = entity_path.replace("/", "-") + ".glb"
         glb_path = os.path.join(self.glb_files_dir, file_name)
-        num_verts = p3d_mesh.num_verts_per_mesh()[0]
+
+        raw_mesh_verts = p3d_mesh.verts_packed()
+        mesh_faces = p3d_mesh.faces_packed()
+        uv_verts = p3d_mesh.textures.verts_uvs_padded()[0]
+        uv_faces = p3d_mesh.textures.faces_uvs_padded()[0]
+
+        # find 3D vertex for each uv vertex
+        uv_vertex_2_mesh_vertex = torch.zeros(len(uv_verts), dtype=torch.long, device=uv_verts.device)
+        uv_vertex_2_mesh_vertex[uv_faces.flatten()] = mesh_faces.flatten()
+        mesh_verts = raw_mesh_verts[uv_vertex_2_mesh_vertex]
+
+        # Trimesh only allows one uv coordinate per vertex
+        # -> need to duplicate vertices
         tm_mesh = trimesh.Trimesh(
-            vertices=p3d_mesh.verts_packed().numpy(force=True),
-            faces=p3d_mesh.faces_packed().numpy(force=True),
+            vertices=mesh_verts.numpy(force=True),
+            faces=uv_faces.numpy(force=True),
+            process=False,  # otherwise duplicate vertices will be removed again
         )
         tm_mesh.visual = trimesh.visual.TextureVisuals(
-            uv=p3d_mesh.textures.verts_uvs_padded()[0, :num_verts].numpy(force=True),
+            uv=uv_verts.numpy(force=True),
             image=PIL.Image.fromarray(
                 np.uint8(p3d_mesh.textures.maps_padded()[0].numpy(force=True) * 255)
             ),
@@ -110,14 +137,6 @@ class RerunVisualizer:
         rr.set_time_sequence("iteration", cur_iter)
         for name, value in named_values:
             rr.log_scalar(title + "/" + name, value)
-
-    def upload_barplot(self, named_values, title):
-        # TODO log barplot to rerun
-        pass
-
-    def upload_pointcloud(self, points, colors=None, title=None):
-        # TODO log pointcloud to rerun
-        pass
 
 
 class VisdomVisualizer:

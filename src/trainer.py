@@ -182,26 +182,30 @@ class Trainer:
 
         self.visualizer.log_model(cur_iter, self.model)
 
-        # Log soft reconstructions with edges
-        rec = self.model.predict(self.viz_samples, self.viz_labels, w_edges=True)
-        self.rec_logger.save(rec, cur_iter)
-        imgs = F.resize(self.viz_samples['imgs'], rec.shape[-2:], antialias=True)
-        self.visualizer.upload_images(torch.stack([imgs, rec], dim=1).reshape(-1, *imgs.shape[1:]), 'recons', 2)
+        # Log soft reconstructions
+        renders = self.model.predict(self.viz_samples, self.viz_labels)
+        self.rec_logger.save(renders, cur_iter)
+        imgs = F.resize(self.viz_samples['imgs'], renders.shape[-2:], antialias=True)
+        self.visualizer.log_renders(cur_iter, renders, 'recons')
 
-        # Log hard reconstructions
-        rec = self.model.predict(self.viz_samples, self.viz_labels, filter_transparent=True)
-        self.rec2_logger.save(rec, cur_iter)
-        self.visualizer.upload_images(torch.stack([imgs, rec], dim=1).reshape(-1, *imgs.shape[1:]), 'recons_hard', 2)
+        # Log hard reconstructions with edges
+        renders = self.model.predict(self.viz_samples, self.viz_labels, w_edges=True, filter_transparent=True)
+        self.rec2_logger.save(renders, cur_iter)
+        self.visualizer.log_renders(cur_iter, renders, 'recons_hard_w_edges')
+
+        # Log hard reconstructions wo edges
+        renders = self.model.predict(self.viz_samples, self.viz_labels, filter_transparent=True)
+        self.visualizer.log_renders(cur_iter, renders, 'recons_hard_wo_edges')
 
         # Log rendering with synthetic colors
-        rec = self.model.predict_synthetic(self.viz_samples, self.viz_labels)
-        self.rec3_logger.save(rec, cur_iter)
-        self.visualizer.upload_images(torch.stack([imgs, rec], dim=1).reshape(-1, *imgs.shape[1:]), 'recons_syn', 2)
+        renders = self.model.predict_synthetic(self.viz_samples, self.viz_labels)
+        self.rec3_logger.save(renders, cur_iter)
+        self.visualizer.log_renders(cur_iter, renders, 'recons_syn')
 
         # Log textures
         txt = self.model.get_arranged_block_txt()
         self.txt_logger.save(txt, cur_iter)
-        self.visualizer.upload_images(txt, 'textures', 1, max_size=256)
+        self.visualizer.log_textures(cur_iter, txt[0], 'textures', max_size=256)
 
     @torch.no_grad()
     def log_dataset_visualization(self, cur_iter):
