@@ -116,8 +116,6 @@ class Trainer:
                 if batch < batch_start:
                     continue
 
-                breakpoint()
-
                 self.run_single_batch_train(images, labels)
 
                 if cur_iter % self.train_stat_interval == 0:
@@ -181,6 +179,9 @@ class Trainer:
     @torch.no_grad()
     def log_visualizations(self, cur_iter):
         self.model.eval()
+
+        self.visualizer.log_model(cur_iter, self.model)
+
         # Log soft reconstructions with edges
         rec = self.model.predict(self.viz_samples, self.viz_labels, w_edges=True)
         self.rec_logger.save(rec, cur_iter)

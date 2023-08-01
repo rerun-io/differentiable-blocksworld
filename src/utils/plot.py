@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Optional
 
+import gc
 import numpy as np
 import pandas as pd
 import PIL
@@ -28,6 +29,7 @@ VIZ_POINTS = 5000
 class RerunVisualizer:
     def __init__(self, rrd_filename: Optional[str], run_dir: str) -> None:
         self.run_dir = run_dir
+        self.glb_files_dir = os.path.join(self.run_dir, "glb_files")
 
         rr.init("Differential Block World", spawn=rrd_filename is None)
 
@@ -38,36 +40,39 @@ class RerunVisualizer:
         # TODO log images to rerun
         pass
 
+    def log_p3d_mesh(self, entity_path, p3d_mesh):
+        file_name = entity_path.replace("/", "-") + ".glb"
+        glb_path = os.path.join(self.glb_files_dir, file_name)
+        num_verts = p3d_mesh.num_verts_per_mesh()[0]
+        tm_mesh = trimesh.Trimesh(
+            vertices=p3d_mesh.verts_packed().numpy(force=True),
+            faces=p3d_mesh.faces_packed().numpy(force=True),
+        )
+        tm_mesh.visual = trimesh.visual.TextureVisuals(
+            uv=p3d_mesh.textures.verts_uvs_padded()[0, :num_verts].numpy(force=True),
+            image=PIL.Image.fromarray(
+                np.uint8(p3d_mesh.textures.maps_padded()[0].numpy(force=True) * 255)
+            ),
+        )
+        tm_mesh.vertex_normals  # this computes vertex normals
+        tm_mesh.export(glb_path)
+        rr.log_mesh_file(entity_path, rr.MeshFormat.GLB, mesh_path=glb_path)
+
     def log_model(self, cur_iter, model):
         """Log current meshes."""
         rr.set_time_sequence("iteration", cur_iter)
-        obj_files_dir = os.path.join(self.run_dir, "obj_files")
-        os.makedirs(obj_files_dir, exist_ok=True)
+        os.makedirs(self.glb_files_dir, exist_ok=True)
         blocks = model.build_blocks(
             world_coord=True, filter_transparent=False, as_scene=False
         )
         for i, block in enumerate(blocks):
-            glb_path = os.path.join(obj_files_dir, f"block_{i}.glb")
-            num_verts = block.num_verts_per_mesh()[0]
-            mesh = trimesh.Trimesh(
-                vertices=block.verts_packed().numpy(force=True),
-                faces=block.faces_packed().numpy(force=True),
-            )
-            mesh.visual = trimesh.visual.TextureVisuals(
-                uv=block.textures.verts_uvs_padded()[0, :num_verts].numpy(force=True),
-                image=PIL.Image.fromarray(
-                    np.uint8(block.textures.maps_padded()[0].numpy(force=True) * 255)
-                ),
-            )
-            mesh.vertex_normals  # this computes vertex normals
-            mesh.export(glb_path)
-            rr.log_mesh_file(f"blocks/#{i}", rr.MeshFormat.GLB, mesh_path=glb_path)
+            self.log_p3d_mesh(f"world/blocks/#{i}", block)
 
-        # TODO log ground
-        # rr.log_mesh_file(f"ground", obj_path)
+        ground = model.build_ground(world_coord=True)
+        self.log_p3d_mesh("world/ground", ground)
 
-        # TODO log background
-        # rr.log_mesh_file(f"background", obj_path)
+        background = model.build_bkg(world_coord=True)
+        self.log_p3d_mesh("world/background", background)
 
         # TODO separately log with thresholded opacity
 
