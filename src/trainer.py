@@ -108,6 +108,8 @@ class Trainer:
     @use_seed()
     def run(self):
         cur_iter = (self.epoch_start - 1) * self.n_batches + self.batch_start
+        log_iters = np.unique(
+            np.geomspace(1, self.n_batches * self.n_epoches, 500).astype(int))
         self.log_dataset_visualization(cur_iter)
         self.log_visualizations(cur_iter)
         for epoch in range(self.epoch_start, self.n_epoches + 1):
@@ -121,10 +123,11 @@ class Trainer:
                 if cur_iter % self.train_stat_interval == 0:
                     self.log_train_metrics(cur_iter, epoch, batch)
 
-                if cur_iter % self.val_stat_interval == 0:
+                if cur_iter % self.val_stat_interval == 0 or cur_iter in log_iters:
                     self.run_val_and_log(cur_iter, epoch, batch)
                     self.log_visualizations(cur_iter)
                     self.save(epoch=epoch, batch=batch)
+
                 cur_iter += 1
             self.step(epoch + 1, batch=1)
             if epoch in self.save_epoches:

@@ -26,8 +26,6 @@ VIZ_POINTS = 5000
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 # TODO similar log_textures / log_renders split for VisdomVisualizer
 
-# TODO synthetic color logging
-
 
 class RerunVisualizer:
     def __init__(self, rrd_filename: Optional[str], run_dir: str) -> None:
@@ -102,9 +100,6 @@ class RerunVisualizer:
 
     def log_model(self, cur_iter, model):
         """Log current meshes."""
-        # R_up_fix = np.array(
-        #     [[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
-        # )  # changes -y to y axis
         rr.log_transform3d(
             "world/dbw",
             rr.TranslationAndMat3(matrix=model.R_world[0].numpy(force=True)),
