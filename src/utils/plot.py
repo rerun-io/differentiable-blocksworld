@@ -28,7 +28,6 @@ VIZ_POINTS = 5000
 
 # TODO thresholded logging
 # TODO synthetic color logging
-# TODO log time scale logging
 # TODO increase brightness
 
 
@@ -115,8 +114,13 @@ class RerunVisualizer:
             as_scene=False,
             filter_killed=False,
         )
-        for i, block in enumerate(blocks):
+        transparents = torch.sigmoid(model.alpha_logit) < 0.5
+        for i, (block, transparent) in enumerate(zip(blocks, transparents)):
             self.log_p3d_mesh(f"world/dbw/blocks/#{i}", block)
+            if transparent:
+                rr.log_cleared(f"world/dbw/opaque_blocks/#{i}")
+            else:
+                self.log_p3d_mesh(f"world/dbw/opaque_blocks/#{i}", block)
 
         ground = model.build_ground(world_coord=True)
         self.log_p3d_mesh("world/dbw/ground", ground)
