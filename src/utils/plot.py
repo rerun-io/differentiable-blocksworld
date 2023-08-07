@@ -26,7 +26,6 @@ VIZ_POINTS = 5000
 # TODO refactor code into Visualizer base class, RerunVisualizer and VisdomVisualizer
 # TODO similar log_textures / log_renders split for VisdomVisualizer
 
-# TODO thresholded logging
 # TODO synthetic color logging
 # TODO increase brightness
 
@@ -83,11 +82,17 @@ class RerunVisualizer:
             faces=uv_faces.numpy(force=True),
             process=False,  # otherwise duplicate vertices will be removed again
         )
+        texture = PIL.Image.fromarray(
+            np.uint8(p3d_mesh.textures.maps_padded()[0].numpy(force=True) * 255)
+        )
+
+        # NOTE we increase the brightness to make it look more similar to pytorch3d's
+        #  renderings
+        enhancer = PIL.ImageEnhance.Brightness(texture)
+        texture = enhancer.enhance(1.5)
         tm_mesh.visual = trimesh.visual.TextureVisuals(
             uv=uv_verts.numpy(force=True),
-            image=PIL.Image.fromarray(
-                np.uint8(p3d_mesh.textures.maps_padded()[0].numpy(force=True) * 255)
-            ),
+            image=texture,
         )
         tm_mesh.vertex_normals
         if invert_normals:
@@ -127,8 +132,6 @@ class RerunVisualizer:
 
         background = model.build_bkg(world_coord=True)
         self.log_p3d_mesh("world/dbw/background", background, invert_normals=True)
-
-        # TODO separately log with thresholded opacity
 
     def log_dataset(self, cur_iter, dataset):
         self.set_iteration(cur_iter)
