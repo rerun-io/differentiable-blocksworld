@@ -1,4 +1,5 @@
 import gc
+import math
 import os
 from contextlib import contextmanager
 from copy import deepcopy
@@ -28,6 +29,7 @@ VIZ_POINTS = 5000
 # TODO thresholded logging
 # TODO synthetic color logging
 # TODO log time scale logging
+# TODO increase brightness
 
 
 class RerunVisualizer:
@@ -44,18 +46,22 @@ class RerunVisualizer:
         if rrd_filename is not None:
             rr.save(os.path.join(run_dir, rrd_filename))
 
-    def log_textures(self, cur_iter, textures, title, *_, **__):
+    def set_iteration(self, cur_iter):
         rr.set_time_sequence("iteration", cur_iter)
+        rr.set_time_seconds("log10(iteration)", math.log10(cur_iter))
+
+    def log_textures(self, cur_iter, textures, title, *_, **__):
+        self.set_iteration(cur_iter)
         rr.log_image(f"{title}", textures.permute(1, 2, 0))
 
     def log_renders(
         self, cur_iter, renders, title, gts=None, max_size=VIZ_MAX_IMG_SIZE, *_, **__
     ):
-        rr.set_time_sequence("iteration", cur_iter)
+        self.set_iteration(cur_iter)
         for i, render in enumerate(renders[: self.max_renders]):
             rr.log_image(f"{title}/#{i}", render.permute(1, 2, 0))
 
-    def log_p3d_mesh(self, entity_path, p3d_mesh, invert_normals = False):
+    def log_p3d_mesh(self, entity_path, p3d_mesh, invert_normals=False):
         file_name = entity_path.replace("/", "-") + ".glb"
         glb_path = os.path.join(self.glb_files_dir, file_name)
 
@@ -101,10 +107,13 @@ class RerunVisualizer:
             rr.TranslationAndMat3(matrix=model.R_world[0].numpy(force=True)),
             timeless=True,
         )
-        rr.set_time_sequence("iteration", cur_iter)
+        self.set_iteration(cur_iter)
         os.makedirs(self.glb_files_dir, exist_ok=True)
         blocks = model.build_blocks(
-            world_coord=True, filter_transparent=False, as_scene=False
+            world_coord=True,
+            filter_transparent=False,
+            as_scene=False,
+            filter_killed=False,
         )
         for i, block in enumerate(blocks):
             self.log_p3d_mesh(f"world/dbw/blocks/#{i}", block)
@@ -118,7 +127,7 @@ class RerunVisualizer:
         # TODO separately log with thresholded opacity
 
     def log_dataset(self, cur_iter, dataset):
-        rr.set_time_sequence("iteration", cur_iter)
+        self.set_iteration(cur_iter)
         for image_id, (image_dict, label) in enumerate(dataset):
             _, height, width = image_dict["imgs"].shape
             scale = min(height, width) / 2.0
@@ -149,7 +158,7 @@ class RerunVisualizer:
             )
 
     def log_scalars(self, cur_iter, named_values, title, *_, **__):
-        rr.set_time_sequence("iteration", cur_iter)
+        self.set_iteration(cur_iter)
         for name, value in named_values:
             rr.log_scalar(title + "/" + name, value)
 
