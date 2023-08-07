@@ -27,7 +27,6 @@ VIZ_POINTS = 5000
 # TODO similar log_textures / log_renders split for VisdomVisualizer
 
 # TODO synthetic color logging
-# TODO increase brightness
 
 
 class RerunVisualizer:
@@ -119,13 +118,26 @@ class RerunVisualizer:
             as_scene=False,
             filter_killed=False,
         )
+        color_blocks = model.build_blocks(
+            world_coord=True,
+            filter_transparent=False,
+            as_scene=False,
+            filter_killed=False,
+            synthetic_colors=True,
+        )
         transparents = torch.sigmoid(model.alpha_logit) < 0.5
-        for i, (block, transparent) in enumerate(zip(blocks, transparents)):
+        for i, (block, color_block, transparent) in enumerate(
+            zip(blocks, color_blocks, transparents)
+        ):
             self.log_p3d_mesh(f"world/dbw/blocks/#{i}", block)
             if transparent:
                 rr.log_cleared(f"world/dbw/opaque_blocks/#{i}")
             else:
                 self.log_p3d_mesh(f"world/dbw/opaque_blocks/#{i}", block)
+            if transparent:
+                rr.log_cleared(f"world/dbw/opaque_color_blocks/#{i}")
+            else:
+                self.log_p3d_mesh(f"world/dbw/opaque_color_blocks/#{i}", color_block)
 
         ground = model.build_ground(world_coord=True)
         self.log_p3d_mesh("world/dbw/ground", ground)
