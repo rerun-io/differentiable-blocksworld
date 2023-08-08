@@ -21,13 +21,14 @@ src="https://img.shields.io/badge/-Paper-blue.svg?colorA=333&logo=arxiv" height=
 src="https://img.shields.io/badge/-BibTeX-blue.svg?colorA=333&logo=latex" height=35em></a>
 <p></p>
 
-![teaser.gif](./media/teaser.gif)
-
 </h2>
 </div>
 
-Official PyTorch implementation of [**Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives**](https://arxiv.org/abs/2307.05473).
-Check out our [**webpage**](https://www.tmonnier.com/DBW/) for video results!
+Modified PyTorch implementation of [**Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives**](https://arxiv.org/abs/2307.05473).
+
+This fork has been modified to use [Rerun](https://github.com/rerun-io/rerun) for visualization.
+
+Check out this [**webpage**](https://www.tmonnier.com/DBW/) for more video results!
 
 This repository contains:
 
