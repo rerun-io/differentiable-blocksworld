@@ -24,6 +24,10 @@ src="https://img.shields.io/badge/-BibTeX-blue.svg?colorA=333&logo=latex" height
 </h2>
 </div>
 
+
+https://github.com/roym899/differentiable-blocksworld/assets/9785832/addde5ea-cc8f-40aa-8960-b69fd36f860a
+
+
 Modified PyTorch implementation of [**Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives**](https://arxiv.org/abs/2307.05473).
 
 This fork has been modified to use [Rerun](https://github.com/rerun-io/rerun) for visualization.
