@@ -35,8 +35,8 @@ class RerunVisualizer:
 
         rr.init("Differential Block World", spawn=rrd_filename is None)
 
-        rr.log_view_coordinates("world", up="+Y", timeless=True)
-        # rr.log_transform3d("world", spawn=rrd_filename is None)
+        # assumption: +Y is up (typically has to be adjusted to dataset)
+        rr.log("world", rr.ViewCoordinates.RUB, timeless=True)
 
         if rrd_filename is not None:
             rr.save(os.path.join(run_dir, rrd_filename))
@@ -47,14 +47,14 @@ class RerunVisualizer:
 
     def log_textures(self, cur_iter, textures, title, *_, **__):
         self.set_iteration(cur_iter)
-        rr.log_image(f"{title}", textures.permute(1, 2, 0))
+        rr.log(f"{title}", rr.Image(textures.permute(1, 2, 0)))
 
     def log_renders(
         self, cur_iter, renders, title, gts=None, max_size=VIZ_MAX_IMG_SIZE, *_, **__
     ):
         self.set_iteration(cur_iter)
         for i, render in enumerate(renders[: self.max_renders]):
-            rr.log_image(f"{title}/#{i}", render.permute(1, 2, 0))
+            rr.log(f"{title}/#{i}", rr.Image(render.permute(1, 2, 0)))
 
     def log_p3d_mesh(self, entity_path, p3d_mesh, invert_normals=False):
         file_name = entity_path.replace("/", "-") + ".glb"
@@ -96,13 +96,14 @@ class RerunVisualizer:
             tm_mesh.vertex_normals = -1 * tm_mesh.vertex_normals
 
         tm_mesh.export(glb_path)
-        rr.log_mesh_file(entity_path, rr.MeshFormat.GLB, mesh_path=glb_path)
+
+        rr.log(entity_path, rr.Asset3D(path=glb_path))
 
     def log_model(self, cur_iter, model):
         """Log current meshes."""
-        rr.log_transform3d(
+        rr.log(
             "world/dbw",
-            rr.TranslationAndMat3(matrix=model.R_world[0].numpy(force=True)),
+            rr.Transform3D(mat3x3=model.R_world[0].numpy(force=True)),
             timeless=True,
         )
         self.set_iteration(cur_iter)
@@ -126,11 +127,11 @@ class RerunVisualizer:
         ):
             self.log_p3d_mesh(f"world/dbw/blocks/#{i}", block)
             if transparent:
-                rr.log_cleared(f"world/dbw/opaque_blocks/#{i}")
+                rr.log(f"world/dbw/opaque_blocks/#{i}", rr.Clear.flat())
             else:
                 self.log_p3d_mesh(f"world/dbw/opaque_blocks/#{i}", block)
             if transparent:
-                rr.log_cleared(f"world/dbw/opaque_color_blocks/#{i}")
+                rr.log(f"world/dbw/opaque_color_blocks/#{i}", rr.Clear.flat())
             else:
                 self.log_p3d_mesh(f"world/dbw/opaque_color_blocks/#{i}", color_block)
 
@@ -153,28 +154,31 @@ class RerunVisualizer:
             rotation = image_dict["R"].clone()
             # row vector convention (pytorch3d) -> column vector convention (rerun)
             rotation = rotation.T
-            rr.log_pinhole(
+            rr.log(
                 f"world/dbw/train_images/#{image_id}",
-                width=width,
-                height=height,
-                focal_length_px=(fx, fy),
-                principal_point_px=(cx, cy),
-                camera_xyz="LUF",  # see https://pytorch3d.org/docs/cameras
+                rr.Pinhole(
+                    width=width,
+                    height=height,
+                    focal_length=(fx.item(), fy.item()),
+                    principal_point=(cx.item(), cy.item()),
+                    camera_xyz=rr.ViewCoordinates.LUF
+                )
             )
-            rr.log_transform3d(
+            rr.log(
                 f"world/dbw/train_images/#{image_id}",
-                rr.TranslationAndMat3(translation=translation, matrix=rotation),
-                from_parent=True,  # pytorch3d uses camera from world
+                rr.Transform3D(
+                    translation=translation, mat3x3=rotation, from_parent=True
+                ),  # pytorch3d uses camera from world
             )
-            rr.log_image(
+            rr.log(
                 f"world/dbw/train_images/#{image_id}",
-                image_dict["imgs"].permute(1, 2, 0),
+                rr.Image(image_dict["imgs"].permute(1, 2, 0)),
             )
 
     def log_scalars(self, cur_iter, named_values, title, *_, **__):
         self.set_iteration(cur_iter)
         for name, value in named_values:
-            rr.log_scalar(title + "/" + name, value)
+            rr.log(title + "/" + name, rr.TimeSeriesScalar(value))
 
 
 class VisdomVisualizer:
